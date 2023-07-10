@@ -1,0 +1,58 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: manager-role
+rules:
+- apiGroups:
+  - my.group.my.domain
+  resources:
+  - echoes
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - my.group.my.domain
+  resources:
+  - echoes/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - my.group.my.domain
+  resources:
+  - echoes/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - my.group.my.domain
+  resources:
+  - guestbooks
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - my.group.my.domain
+  resources:
+  - guestbooks/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - my.group.my.domain
+  resources:
+  - guestbooks/status
+  verbs:
+  - get
+  - patch
+  - update

@@ -1,0 +1,16 @@
+apiVersion: my.group.my.domain/v1alpha1
+kind: Echo
+metadata:
+  labels:
+    app.kubernetes.io/name: echo
+    app.kubernetes.io/instance: echo-sample
+    app.kubernetes.io/part-of: kubebuilder-example
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kubebuilder-example
+  name: echo-sample
+  namespace: zcytest
+spec:
+  scheduler: "2023-07-01T16:52:00Z"
+  command: "echo hello"
+  image: busybox
+  name: echo

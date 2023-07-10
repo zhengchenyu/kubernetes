@@ -1,0 +1,161 @@
+/*
+Copyright 2023 zhengchenyu.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package controller
+
+import (
+	"context"
+	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
+	"time"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+
+	mygroupv1alpha1 "k8s.io/kubernetes/api/v1alpha1"
+)
+
+// EchoReconciler reconciles a Echo object
+type EchoReconciler struct {
+	client.Client
+	Scheme *runtime.Scheme
+}
+
+//+kubebuilder:rbac:groups=my.group.my.domain,resources=echoes,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=my.group.my.domain,resources=echoes/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=my.group.my.domain,resources=echoes/finalizers,verbs=update
+
+// Reconcile is part of the main kubernetes reconciliation loop which aims to
+// move the current state of the cluster closer to the desired state.
+// TODO(user): Modify the Reconcile function to compare the state specified by
+// the Echo object against the actual cluster state, and then
+// perform operations to make the cluster state reflect the state specified by
+// the user.
+//
+// For more details, check Reconcile and its Result here:
+// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
+func (r *EchoReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	reqLogger := log.FromContext(ctx, "namespace", req.Namespace, "guestbook", req.Name)
+	reqLogger.Info("========== start Reconcile ==========")
+
+	// TODO(user): your logic here
+	instance := &mygroupv1alpha1.Echo{}
+	err := r.Get(ctx, req.NamespacedName, instance)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, err
+	}
+	if instance.Status.Phase == "" {
+		instance.Status.Phase = mygroupv1alpha1.PhasePending
+	}
+
+	switch instance.Status.Phase {
+	case mygroupv1alpha1.PhasePending:
+		reqLogger.Info("Phase: Pending")
+
+		d, err := timeUntilSchedule(instance.Spec.Scheduler, reqLogger)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		if d > 0 {
+			return reconcile.Result{RequeueAfter: d}, nil
+		}
+		reqLogger.Info("it's time! Ready to execute.", "command", instance.Spec.Command)
+		instance.Status.Phase = mygroupv1alpha1.PhaseRunning
+	case mygroupv1alpha1.PhaseRunning:
+		reqLogger.Info("Phase: Running")
+		pod := newPodForCR(instance)
+		controllerutil.SetControllerReference(instance, pod, r.Scheme)
+		found := &corev1.Pod{}
+		// nsName := types.NamespacedName{Namespace: req.Namespace, Name: req.Name}
+		err := r.Get(context.TODO(), req.NamespacedName, found)
+		if err != nil && errors.IsNotFound(err) {
+			err := r.Create(context.TODO(), pod)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			reqLogger.Info("pod launched")
+		} else if err != nil {
+			return ctrl.Result{}, err
+		} else if found.Status.Phase == corev1.PodFailed || found.Status.Phase == corev1.PodSucceeded {
+			reqLogger.Info("Container Terminated", "reason", found.Status.Reason,
+				"message", found.Status.Message)
+			instance.Status.Phase = mygroupv1alpha1.PhaseDone
+		} else {
+			return ctrl.Result{}, nil
+		}
+	case mygroupv1alpha1.PhaseDone:
+		reqLogger.Info("Echo Done!")
+	default:
+		reqLogger.Info("Found wrong phase!", "phase", instance.Status.Phase)
+	}
+
+	err = r.Status().Update(context.TODO(), instance)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *EchoReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&mygroupv1alpha1.Echo{}).
+		Complete(r)
+}
+
+func timeUntilSchedule(schedule string, logger logr.Logger) (time.Duration, error) {
+	now := time.Now().UTC()
+	layout := "2006-01-02T15:04:05Z"
+	s, err := time.Parse(layout, schedule)
+	if err != nil {
+		logger.Info("parse failed", "scheduler", schedule, "error", err)
+		return time.Duration(0), nil
+	}
+	return s.Sub(now), nil
+}
+
+func newPodForCR(echo *mygroupv1alpha1.Echo) *corev1.Pod {
+	return &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      echo.Name + "-pod",
+			Namespace: echo.Namespace,
+			Labels: map[string]string{
+				"app": echo.Name,
+			},
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name:    echo.Spec.Name,
+					Image:   echo.Spec.Image,
+					Command: strings.Split(echo.Spec.Command, " "),
+				},
+			},
+			RestartPolicy: corev1.RestartPolicyOnFailure,
+		},
+	}
+}

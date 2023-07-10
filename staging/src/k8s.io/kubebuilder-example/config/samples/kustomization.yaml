@@ -1,0 +1,5 @@
+## Append samples of your project ##
+resources:
+- my.group_v1alpha1_echo.yaml
+- my.group_v1alpha1_guestbook.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples
