@@ -1,0 +1,24 @@
+# permissions for end users to edit at2s.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: at2-editor-role
+rules:
+- apiGroups:
+  - cnat2.example.org
+  resources:
+  - at2s
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cnat2.example.org
+  resources:
+  - at2s/status
+  verbs:
+  - get

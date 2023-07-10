@@ -1,0 +1,66 @@
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - at2s
+  - pods
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - at2s/finalizers
+  - pods/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - at2s/status
+  - pods/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - cnat2.example.org
+  resources:
+  - at2s
+  - pods
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cnat2.example.org
+  resources:
+  - at2s/finalizers
+  - pods/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cnat2.example.org
+  resources:
+  - at2s/status
+  - pods/status
+  verbs:
+  - get
+  - patch
+  - update

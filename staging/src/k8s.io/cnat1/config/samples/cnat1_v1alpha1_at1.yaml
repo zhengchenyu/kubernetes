@@ -1,0 +1,9 @@
+apiVersion: cnat1.prog-kubebuilder.info/v1alpha1
+kind: At1
+metadata:
+  name: at1-sample
+spec:
+  scheduler: "2021-01-01T01:00:00Z"
+  command: "echo hello"
+  image: busybox
+  name: at

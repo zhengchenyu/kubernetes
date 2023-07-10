@@ -1,0 +1,24 @@
+# permissions for end users to edit at1s.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: at1-editor-role
+rules:
+- apiGroups:
+  - cnat1.prog-kubebuilder.info
+  resources:
+  - at1s
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cnat1.prog-kubebuilder.info
+  resources:
+  - at1s/status
+  verbs:
+  - get

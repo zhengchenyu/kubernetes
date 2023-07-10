@@ -1,0 +1,9 @@
+apiVersion: cnat2.example.org/v1alpha1
+kind: At2
+metadata:
+  name: at2-sample
+spec:
+  scheduler: "2021-09-28T10:55:00Z"
+  command: "echo hello"
+  image: registry.ke.com/docker-virtual/hadoop/busybox
+  name: at2
